@@ -26,8 +26,8 @@ MP_ACCESS_TOKEN = os.environ.get("MP_ACCESS_TOKEN") # Puxa do arquivo .env
 # 1. FUNÇÕES DO BANCO DE DADOS (FIRESTORE)
 # ==========================================
 def obter_saldo_nuvem(uid, id_token):
-url = f"https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/(default)/documents/usuarios/{uid}"
-headers = {"Authorization": f"Bearer {id_token}"}
+        url = f"https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/(default)/documents/usuarios/{uid}"
+        headers = {"Authorization": f"Bearer {id_token}"}
 
 try:
 resposta = requests.get(url, headers=headers)
