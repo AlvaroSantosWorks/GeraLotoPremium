@@ -235,8 +235,8 @@ class GeradorLoterias:
 
     def obter_ultimo_concurso(self):
         try:
-            try: df = pd.read_csv(self.caminho_historico, encoding='latin1', sep=',', header=0)
-            except: df = pd.read_csv(self.caminho_historico, encoding='latin1', sep=';', header=0)
+            # 🌟 Atualizado para ler Excel direto
+            df = pd.read_excel(self.caminho_historico, header=0)
             coluna_zero = df.iloc[:, 0].dropna().astype(str)
             return coluna_zero[coluna_zero.str.strip() != ''].iloc[-1]
         except Exception as e: return f"Erro: {e}"
@@ -253,38 +253,46 @@ class GeradorLoterias:
         jogos_oficiais = set()
         self.historico_lista = []
         if not os.path.exists(self.caminho_historico): return jogos_oficiais
-        with open(self.caminho_historico, mode='r', encoding='latin1') as ficheiro:
-            leitor = csv.DictReader(ficheiro, delimiter=',')
-            if 'Bola1' not in leitor.fieldnames:
-                ficheiro.seek(0)
-                leitor = csv.DictReader(ficheiro, delimiter=';')
-            for linha in leitor:
+        try:
+            # 🌟 Atualizado para ler Excel direto
+            df = pd.read_excel(self.caminho_historico)
+            for index, row in df.iterrows():
                 try:
-                    jogo = [int(linha[f'Bola{i}']) for i in range(1, self.total_bolas + 1)]
+                    jogo = [int(row[f'Bola{i}']) for i in range(1, self.total_bolas + 1)]
                     jogo_ordenado = tuple(sorted(jogo))
                     jogos_oficiais.add(jogo_ordenado)
                     self.historico_lista.append(list(jogo_ordenado))
                 except: continue
+        except: pass
         return jogos_oficiais
 
     def _carregar_gerados(self):
         jogos = set()
         if os.path.exists(self.caminho_gerados):
-            with open(self.caminho_gerados, mode='r', encoding='utf-8') as f:
-                for linha in csv.reader(f):
-                    if not linha or 'Bola' in str(linha[0]): continue
-                    try: jogos.add(tuple(sorted([int(x) for x in linha])))
+            try:
+                # 🌟 Atualizado para ler Excel direto
+                df = pd.read_excel(self.caminho_gerados)
+                for index, row in df.iterrows():
+                    try:
+                        jogo = tuple(sorted([int(x) for x in row.dropna()]))
+                        if len(jogo) > 0: jogos.add(jogo)
                     except: continue
+            except: pass
         return jogos
 
     def _salvar_gerados(self, novos_jogos):
         if not novos_jogos: return
-        arquivo_existe = os.path.exists(self.caminho_gerados)
-        with open(self.caminho_gerados, mode='a', newline='', encoding='utf-8') as f:
-            escritor = csv.writer(f)
-            if not arquivo_existe:
-                escritor.writerow([f'Bola{i}' for i in range(1, len(novos_jogos[0]) + 1)])
-            for jogo in novos_jogos: escritor.writerow(jogo)
+        df_novos = pd.DataFrame(novos_jogos, columns=[f'Bola{i}' for i in range(1, len(novos_jogos[0]) + 1)])
+        try:
+            # 🌟 Atualizado para salvar e concatenar em Excel
+            if os.path.exists(self.caminho_gerados):
+                df_existente = pd.read_excel(self.caminho_gerados)
+                df_final = pd.concat([df_existente, df_novos], ignore_index=True)
+            else:
+                df_final = df_novos
+            df_final.to_excel(self.caminho_gerados, index=False)
+        except Exception as e:
+            print(f"Erro ao salvar: {e}")
 
     def _gerar_base_equilibrada(self, tamanho):
         pares = [n for n in range(2, self.faixa_numeros + 1, 2)]
@@ -350,10 +358,10 @@ modalidade = st.selectbox("Escolha a Modalidade:", ["Mega-Sena", "Lotofácil"])
 modo_geracao = st.radio("Motor de Geração:", ["Tradicional / Aleatório", "Inteligência Artificial 🧠"])
 
 if modalidade == "Mega-Sena":
-    arquivo_selecionado = "Mega-Sena.csv"; arquivo_gerados = "jogos_ja_gerados_mega.csv"
+    arquivo_selecionado = "Mega-Sena.xlsx"; arquivo_gerados = "jogos_ja_gerados_mega.xlsx"
     total_bolas = 6; faixa_maxima = 60; min_permitido = 6; max_permitido = 20
 else:
-    arquivo_selecionado = "Lotofacil.csv"; arquivo_gerados = "jogos_ja_gerados_lotofacil.csv"
+    arquivo_selecionado = "Lotofacil.xlsx"; arquivo_gerados = "jogos_ja_gerados_lotofacil.xlsx"
     total_bolas = 15; faixa_maxima = 25; min_permitido = 15; max_permitido = 20
 
 @st.cache_resource
