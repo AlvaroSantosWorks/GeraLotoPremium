@@ -58,6 +58,11 @@ def iniciar_sessao(email, password):
     payload = {"email": email, "password": password, "returnSecureToken": True}
     return requests.post(url, json=payload).json()
 
+def redefinir_senha(email):
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key={FIREBASE_WEB_API_KEY}"
+    payload = {"requestType": "PASSWORD_RESET", "email": email}
+    return requests.post(url, json=payload).json()
+
 # ==========================================
 # 3. PAGAMENTO E SINCRONIZAÇÃO (MERCADO PAGO)
 # ==========================================
@@ -117,25 +122,46 @@ if "user_uid" not in st.session_state:
     st.title("🔒 Bem-vindo ao GeraLoto Premium")
     st.write("Inicie sessão ou crie uma conta para acessar o sistema de previsões.")
     
-    escolha = st.radio("Selecione uma opção:", ["Iniciar Sessão", "Criar Conta Nova"])
+    escolha = st.radio("Selecione uma opção:", ["Iniciar Sessão", "Criar Conta Nova", "Esqueci minha senha"])
     email_input = st.text_input("E-mail")
-    senha_input = st.text_input("Senha (Mínimo 6 caracteres)", type="password")
+    
+    # Oculta o campo de senha se o usuário estiver recuperando a conta
+    if escolha != "Esqueci minha senha":
+        senha_input = st.text_input("Senha (Mínimo 6 caracteres)", type="password")
     
     if escolha == "Criar Conta Nova" and st.button("Registrar Conta"):
-        with st.spinner("Criando conta..."):
-            res = registar_utilizador(email_input, senha_input)
-            if "error" in res: st.error(res["error"]["message"])
-            else: st.success("Conta criada! Pode iniciar sessão agora.")
+        if email_input and senha_input:
+            with st.spinner("Criando conta..."):
+                res = registar_utilizador(email_input, senha_input)
+                if "error" in res: st.error(res["error"]["message"])
+                else: st.success("Conta criada! Pode iniciar sessão agora.")
+        else:
+            st.warning("Preencha e-mail e senha.")
                     
     elif escolha == "Iniciar Sessão" and st.button("Entrar no Sistema"):
-        with st.spinner("Autenticando..."):
-            res = iniciar_sessao(email_input, senha_input)
-            if "error" in res: st.error("Credenciais inválidas.")
-            else:
-                st.session_state["user_uid"] = res["localId"]
-                st.session_state["user_email"] = res["email"]
-                st.session_state["id_token"] = res["idToken"]
-                st.rerun()
+        if email_input and senha_input:
+            with st.spinner("Autenticando..."):
+                res = iniciar_sessao(email_input, senha_input)
+                if "error" in res: st.error("Credenciais inválidas.")
+                else:
+                    st.session_state["user_uid"] = res["localId"]
+                    st.session_state["user_email"] = res["email"]
+                    st.session_state["id_token"] = res["idToken"]
+                    st.rerun()
+        else:
+            st.warning("Preencha e-mail e senha.")
+            
+    elif escolha == "Esqueci minha senha" and st.button("Enviar e-mail de recuperação"):
+        if email_input:
+            with st.spinner("Processando..."):
+                res = redefinir_senha(email_input)
+                if "error" in res: 
+                    st.error("Erro ao enviar e-mail. Verifique se o endereço está correto.")
+                else: 
+                    st.success("✅ E-mail de recuperação enviado! Verifique sua caixa de entrada e também a pasta de Spam.")
+        else:
+            st.warning("Por favor, digite seu e-mail acima para receber o link de recuperação.")
+            
     st.stop()
 
 # ==========================================
