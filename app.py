@@ -32,37 +32,55 @@ headers = {"Authorization": f"Bearer {id_token}"}
 try:
 resposta = requests.get(url, headers=headers)
 
+        # 🔍 DEBUG FORÇADO: Isso vai aparecer na sidebar aconteça o que acontecer
+        st.sidebar.write("--- DEBUG FIRESTORE ---")
+        st.sidebar.write(f"Status Code: {resposta.status_code}")
+        st.sidebar.write(f"Resposta Texto: {resposta.text}")
+        
 if resposta.status_code == 200:
 dados = resposta.json()
-            # Retorna o valor se encontrado
-            # Retorna o valor real do banco
-return int(dados['fields']['fichas']['integerValue'])
+            # 🔍 DEBUG: Comente a linha abaixo após descobrir o erro
+            st.sidebar.write("Dados do Firestore:", dados) 
+            
+            # Verificação de segurança: O campo existe?
+            if 'fields' in dados and 'fichas' in dados['fields']:
+                return int(dados['fields']['fichas'].get('integerValue', 0))
+            else:
+                st.sidebar.error("Estrutura do documento inválida. Faltam 'fields' ou 'fichas'.")
+                return 0
+            # O Firestore REST API retorna integerValue como STRING ("8020")
+            valor_fichas = int(dados['fields']['fichas']['integerValue'])
+            return valor_fichas
 
 elif resposta.status_code == 404:
-            # Usuário não existe, cria com 1000
-            # Usuário novo, ganha 1000 de bônus
+            # Documento não existe, cria um novo
 atualizar_saldo_nuvem(uid, id_token, 1000)
 return 1000
 else:
-            # Caso a API retorne erro (ex: 401 Unauthorized), retorna None para identificar erro
-            st.error(f"Erro ao buscar saldo: {resposta.status_code}")
-            return None
-            # Erro de API (ex: erro de permissão), avisa no sidebar e retorna 0
-            st.sidebar.error("Erro ao carregar saldo do servidor.")
-            return 0
+            st.sidebar.error(f"Erro na conexão com Firestore: {resposta.status_code}")
+return 0
+
+    except Exception as e:
+        st.sidebar.error(f"Erro na requisição: {str(e)}")
+        return 0
             
 except Exception as e:
-        st.error(f"Erro crítico de conexão: {e}")
-        return None
-        # Falha de conexão, avisa no sidebar e retorna 0
-        st.sidebar.error("Sem conexão com o banco de dados.")
-        return 0
+return 0
+
+except Exception as e:
+# Falha de conexão, avisa no sidebar e retorna 0
+st.sidebar.error("Sem conexão com o banco de dados.")
+return 0
 
 def atualizar_saldo_nuvem(uid, id_token, novo_saldo):
 url = f"https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/(default)/documents/usuarios/{uid}"
 headers = {"Authorization": f"Bearer {id_token}"}
-payload = {"fields": {"fichas": {"integerValue": str(novo_saldo)}}}
-requests.patch(url, headers=headers, json=payload)
+# Envia como integerValue conforme a especificação da API REST do Firestore
+payload = {"fields": {"fichas": {"integerValue": str(int(novo_saldo))}}}
+
+resposta = requests.patch(url, headers=headers, json=payload)
+if resposta.status_code != 200:
+st.sidebar.error(f"Erro ao salvar saldo: {resposta.status_code}")
 
 # ==========================================
 # 2. FUNÇÕES DE AUTENTICAÇÃO (FIREBASE)
