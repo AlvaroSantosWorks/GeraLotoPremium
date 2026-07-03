@@ -28,16 +28,26 @@ MP_ACCESS_TOKEN = os.environ.get("MP_ACCESS_TOKEN") # Puxa do arquivo .env
 def obter_saldo_nuvem(uid, id_token):
     url = f"https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/(default)/documents/usuarios/{uid}"
     headers = {"Authorization": f"Bearer {id_token}"}
-    resposta = requests.get(url, headers=headers)
     
-    if resposta.status_code == 200:
-        dados = resposta.json()
-        return int(dados['fields']['fichas']['integerValue'])
-    elif resposta.status_code == 404:
-        # Se o usuário é novo, ganha 1000 fichas de brinde
-        atualizar_saldo_nuvem(uid, id_token, 1000)
-        return 1000
-    return 0
+    try:
+        resposta = requests.get(url, headers=headers)
+        
+        if resposta.status_code == 200:
+            dados = resposta.json()
+            # Retorna o valor se encontrado
+            return int(dados['fields']['fichas']['integerValue'])
+        
+        elif resposta.status_code == 404:
+            # Usuário não existe, cria com 1000
+            atualizar_saldo_nuvem(uid, id_token, 1000)
+            return 1000
+        else:
+            # Caso a API retorne erro (ex: 401 Unauthorized), retorna None para identificar erro
+            st.error(f"Erro ao buscar saldo: {resposta.status_code}")
+            return None
+    except Exception as e:
+        st.error(f"Erro crítico de conexão: {e}")
+        return None
 
 def atualizar_saldo_nuvem(uid, id_token, novo_saldo):
     url = f"https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/(default)/documents/usuarios/{uid}"
@@ -147,6 +157,8 @@ if "user_uid" not in st.session_state:
                     st.session_state["user_uid"] = res["localId"]
                     st.session_state["user_email"] = res["email"]
                     st.session_state["id_token"] = res["idToken"]
+                    # 🌟 FORÇA A BUSCA DO SALDO IMEDIATAMENTE
+                    st.session_state["fichas"] = obter_saldo_nuvem(res["localId"], res["idToken"])
                     st.rerun()
         else:
             st.warning("Preencha e-mail e senha.")
