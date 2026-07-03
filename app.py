@@ -34,20 +34,22 @@ def obter_saldo_nuvem(uid, id_token):
         
         if resposta.status_code == 200:
             dados = resposta.json()
-            # Retorna o valor se encontrado
+            # Retorna o valor real do banco
             return int(dados['fields']['fichas']['integerValue'])
         
         elif resposta.status_code == 404:
-            # Usuário não existe, cria com 1000
+            # Usuário novo, ganha 1000 de bônus
             atualizar_saldo_nuvem(uid, id_token, 1000)
             return 1000
         else:
-            # Caso a API retorne erro (ex: 401 Unauthorized), retorna None para identificar erro
-            st.error(f"Erro ao buscar saldo: {resposta.status_code}")
-            return None
+            # Erro de API (ex: erro de permissão), avisa no sidebar e retorna 0
+            st.sidebar.error("Erro ao carregar saldo do servidor.")
+            return 0
+            
     except Exception as e:
-        st.error(f"Erro crítico de conexão: {e}")
-        return None
+        # Falha de conexão, avisa no sidebar e retorna 0
+        st.sidebar.error("Sem conexão com o banco de dados.")
+        return 0
 
 def atualizar_saldo_nuvem(uid, id_token, novo_saldo):
     url = f"https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/(default)/documents/usuarios/{uid}"
