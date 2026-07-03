@@ -30,7 +30,7 @@ def obter_saldo_nuvem(uid, id_token):
         headers = {"Authorization": f"Bearer {id_token}"}
 
 try:
-resposta = requests.get(url, headers=headers)
+        resposta = requests.get(url, headers=headers)
 
         # 🔍 DEBUG FORÇADO: Isso vai aparecer na sidebar aconteça o que acontecer
         st.sidebar.write("--- DEBUG FIRESTORE ---")
@@ -38,7 +38,7 @@ resposta = requests.get(url, headers=headers)
         st.sidebar.write(f"Resposta Texto: {resposta.text}")
         
 if resposta.status_code == 200:
-dados = resposta.json()
+        dados = resposta.json()
             # 🔍 DEBUG: Comente a linha abaixo após descobrir o erro
             st.sidebar.write("Dados do Firestore:", dados) 
             
