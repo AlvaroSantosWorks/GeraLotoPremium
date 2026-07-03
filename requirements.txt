@@ -4,3 +4,4 @@ scikit-learn
 mercadopago
 requests
 python-dotenv
+openpyxl
