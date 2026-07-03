@@ -8,10 +8,16 @@ import requests
 import math
 import mercadopago
 import time
+import urllib.parse
 from dotenv import load_dotenv
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.neural_network import MLPRegressor
+
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
+# Puxa o redirect do .env, se não achar, usa o localhost por padrão
+REDIRECT_URI = os.environ.get("REDIRECT_URI", "http://localhost:8501")
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="GeraLoto - Premium", page_icon="🎲", layout="wide")
@@ -75,6 +81,39 @@ def redefinir_senha(email):
     payload = {"requestType": "PASSWORD_RESET", "email": email}
     return requests.post(url, json=payload).json()
 
+def obter_url_login_google():
+    params = {
+        "client_id": GOOGLE_CLIENT_ID,
+        "redirect_uri": REDIRECT_URI,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "access_type": "online",
+        "prompt": "select_account"
+    }
+    return "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
+
+def obter_id_token_google(codigo):
+    url = "https://oauth2.googleapis.com/token"
+    payload = {
+        "client_id": GOOGLE_CLIENT_ID,
+        "client_secret": GOOGLE_CLIENT_SECRET,
+        "code": codigo,
+        "grant_type": "authorization_code",
+        "redirect_uri": REDIRECT_URI
+    }
+    res = requests.post(url, data=payload).json()
+    return res.get("id_token")
+
+def login_firebase_com_google(google_id_token):
+    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key={FIREBASE_WEB_API_KEY}"
+    payload = {
+        "postBody": f"id_token={google_id_token}&providerId=google.com",
+        "requestUri": REDIRECT_URI,
+        "returnIdpCredential": True,
+        "returnSecureToken": True
+    }
+    return requests.post(url, json=payload).json()
+
 # ==========================================
 # 3. PAGAMENTO E SINCRONIZAÇÃO (MERCADO PAGO)
 # ==========================================
@@ -134,6 +173,33 @@ if "user_uid" not in st.session_state:
     st.title("🔒 Bem-vindo ao GeraLoto Premium")
     st.write("Inicie sessão ou crie uma conta para acessar o sistema de previsões.")
     
+    # --- 🌟 NOVO: CAPTURA DO RETORNO DO GOOGLE ---
+    query_params = st.query_params
+    if "code" in query_params:
+        codigo = query_params["code"]
+        with st.spinner("Autenticando e conectando com o Google..."):
+            google_token = obter_id_token_google(codigo)
+            if google_token:
+                res_firebase = login_firebase_com_google(google_token)
+                if "error" in res_firebase:
+                    st.error("Erro ao vincular conta com o banco de dados.")
+                else:
+                    st.session_state["user_uid"] = res_firebase["localId"]
+                    st.session_state["user_email"] = res_firebase["email"]
+                    st.session_state["id_token"] = res_firebase["idToken"]
+                    st.session_state["fichas"] = obter_saldo_nuvem(res_firebase["localId"], res_firebase["idToken"])
+                    
+                    # Limpa o código da URL para não bugar se o usuário der F5
+                    st.query_params.clear()
+                    st.rerun()
+            else:
+                st.error("Falha de comunicação com o Google.")
+                
+    # --- 🌟 NOVO: BOTÃO DO GOOGLE ---
+    url_google = obter_url_login_google()
+    st.link_button("🚀 Entrar com o Google (Recomendado)", url_google, type="primary", use_container_width=True)
+    st.markdown("---")
+    st.markdown("**Ou acesse com E-mail e Senha:**")
     escolha = st.radio("Selecione uma opção:", ["Iniciar Sessão", "Criar Conta Nova", "Esqueci minha senha"])
     email_input = st.text_input("E-mail")
     
