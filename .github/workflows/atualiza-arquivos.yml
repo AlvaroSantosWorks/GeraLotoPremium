@@ -1,0 +1,30 @@
+name: Atualizar Arquivos Externos
+
+on:
+  schedule:
+    # Roda todo dia às 08h00 UTC (05h00 no horário de Brasília)
+    - cron: '0 8 * * *'
+  workflow_dispatch: # Permite que você rode o script manualmente com um botão no GitHub
+
+jobs:
+  update-files:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Necessário para o bot ter permissão de fazer o commit
+
+    steps:
+      - name: Fazer o checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Baixar os arquivos da internet
+        run: |
+          # O comando curl -o [NOME-DO-ARQUIVO-LOCAL] [URL-DO-ARQUIVO]
+          # Substitua pelos caminhos da sua pasta e as URLs reais
+          
+          curl -o GeraLotoPremium/Mega-Sena.xlsx "https://servicebus3.caixa.gov.br/portaldeloterias/api/resultados/download?modalidade=Mega-Sena"
+          curl -o GeraLotoPremium/Lotofacil.xlsx "https://servicebus3.caixa.gov.br/portaldeloterias/api/resultados/download?modalidade=Lotofácil"
+
+      - name: Commitar e fazer push das mudanças
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Automated: Atualização dos arquivos externos"
