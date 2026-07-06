@@ -21,8 +21,8 @@ jobs:
           # O comando curl -o [NOME-DO-ARQUIVO-LOCAL] [URL-DO-ARQUIVO]
           # Substitua pelos caminhos da sua pasta e as URLs reais
           
-          curl -o /Mega-Sena.xlsx "https://servicebus3.caixa.gov.br/portaldeloterias/api/resultados/download?modalidade=Mega-Sena"
-          curl -o /Lotofacil.xlsx "https://servicebus3.caixa.gov.br/portaldeloterias/api/resultados/download?modalidade=Lotofácil"
+          curl -o Mega-Sena.xlsx "https://servicebus3.caixa.gov.br/portaldeloterias/api/resultados/download?modalidade=Mega-Sena"
+          curl -o Lotofacil.xlsx "https://servicebus3.caixa.gov.br/portaldeloterias/api/resultados/download?modalidade=Lotofácil"
 
       - name: Commitar e fazer push das mudanças
         uses: stefanzweifel/git-auto-commit-action@v5
